@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inventory &amp; Quotes</title>
+  <style>
+    :root { --ink:#1d2433; --muted:#5d6678; --line:#dde1ea; --accent:#2557d6; --bg:#f6f7fa; }
+    * { box-sizing: border-box; }
+    body { margin:0; font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color:var(--ink); background:var(--bg); }
+    header { background:#fff; border-bottom:1px solid var(--line); padding:14px 24px; }
+    header h1 { margin:0; font-size:18px; }
+    main { max-width:980px; margin:24px auto; padding:0 16px; display:grid; gap:20px; }
+    section { background:#fff; border:1px solid var(--line); border-radius:8px; padding:18px; }
+    h2 { margin:0 0 12px; font-size:16px; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); }
+    th { color:var(--muted); font-weight:600; font-size:13px; }
+    td.num, th.num { text-align:right; }
+    form.row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+    input, select, button { font:inherit; padding:7px 9px; border:1px solid var(--line); border-radius:6px; }
+    input { min-width:0; }
+    button { background:var(--accent); border-color:var(--accent); color:#fff; cursor:pointer; }
+    button.ghost { background:#fff; color:var(--accent); }
+    button.danger { background:#fff; color:#b3261e; border-color:#e6c4c1; }
+    #message { min-height:20px; color:#b3261e; }
+    .totals { margin-top:10px; text-align:right; color:var(--muted); }
+    .totals strong { color:var(--ink); }
+  </style>
+</head>
+<body>
+<header><h1>Inventory &amp; Quotes</h1></header>
+<main>
+  <p id="message" role="alert"></p>
+
+  <section>
+    <h2>Products</h2>
+    <table>
+      <thead><tr><th>SKU</th><th>Name</th><th class="num">Price</th><th class="num">Stock</th><th></th></tr></thead>
+      <tbody id="products"></tbody>
+    </table>
+    <form class="row" id="product-form">
+      <input name="sku" placeholder="SKU" required>
+      <input name="name" placeholder="Name" required>
+      <input name="price" type="number" step="0.01" min="0" placeholder="Price" required>
+      <input name="stock" type="number" min="0" placeholder="Stock" required>
+      <button type="submit">Add product</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>New quote (tax {{ tax_rate }}% added automatically)</h2>
+    <form class="row" id="quote-form">
+      <input name="customer" placeholder="Customer" required>
+      <select name="product" id="quote-product"></select>
+      <input name="quantity" type="number" min="1" value="1" style="width:90px">
+      <button type="button" class="ghost" id="add-line">Add line</button>
+    </form>
+    <table>
+      <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Unit</th><th></th></tr></thead>
+      <tbody id="lines"></tbody>
+    </table>
+    <form class="row" id="save-quote"><button type="submit">Save quote</button></form>
+  </section>
+
+  <section>
+    <h2>Saved quotes</h2>
+    <table>
+      <thead><tr><th>#</th><th>Customer</th><th class="num">Subtotal</th><th class="num">Tax</th><th class="num">Total</th></tr></thead>
+      <tbody id="quotes"></tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+const money = n => Number(n).toFixed(2);
+const message = document.getElementById("message");
+let products = [];
+let lines = [];
+
+async function api(path, options = {}) {
+  const response = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options });
+  if (response.status === 204) return null;
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || "Request failed");
+  return body;
+}
+
+function show(error) { message.textContent = error ? error.message : ""; }
+
+async function loadProducts() {
+  products = await api("/api/products");
+  document.getElementById("products").innerHTML = products.map(p => `
+    <tr><td>${p.sku}</td><td>${p.name}</td><td class="num">${money(p.price)}</td><td class="num">${p.stock}</td>
+    <td class="num"><button class="danger" data-delete="${p.id}">Delete</button></td></tr>`).join("");
+  document.getElementById("quote-product").innerHTML =
+    products.map(p => `<option value="${p.id}">${p.name} (${money(p.price)})</option>`).join("");
+}
+
+async function loadQuotes() {
+  const quotes = await api("/api/quotes");
+  document.getElementById("quotes").innerHTML = quotes.map(q => `
+    <tr><td>${q.id}</td><td>${q.customer}</td><td class="num">${money(q.subtotal)}</td>
+    <td class="num">${money(q.tax)}</td><td class="num"><strong>${money(q.total)}</strong></td></tr>`).join("");
+}
+
+function drawLines() {
+  document.getElementById("lines").innerHTML = lines.map((l, i) => `
+    <tr><td>${l.name}</td><td class="num">${l.quantity}</td><td class="num">${money(l.price)}</td>
+    <td class="num"><button class="danger" data-remove="${i}">Remove</button></td></tr>`).join("");
+}
+
+document.getElementById("product-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = new FormData(event.target);
+  try {
+    await api("/api/products", { method: "POST", body: JSON.stringify(Object.fromEntries(form)) });
+    event.target.reset(); show(null); await loadProducts();
+  } catch (error) { show(error); }
+});
+
+document.getElementById("products").addEventListener("click", async event => {
+  const id = event.target.dataset.delete;
+  if (!id) return;
+  try { await api(`/api/products/${id}`, { method: "DELETE" }); show(null); await loadProducts(); }
+  catch (error) { show(error); }
+});
+
+document.getElementById("add-line").addEventListener("click", () => {
+  const form = document.getElementById("quote-form");
+  const product = products.find(p => p.id === Number(form.product.value));
+  const quantity = Number(form.quantity.value);
+  if (!product || quantity < 1) return;
+  lines.push({ product_id: product.id, name: product.name, price: product.price, quantity });
+  drawLines();
+});
+
+document.getElementById("lines").addEventListener("click", event => {
+  const index = event.target.dataset.remove;
+  if (index === undefined) return;
+  lines.splice(Number(index), 1);
+  drawLines();
+});
+
+document.getElementById("save-quote").addEventListener("submit", async event => {
+  event.preventDefault();
+  const customer = document.getElementById("quote-form").customer.value;
+  try {
+    await api("/api/quotes", { method: "POST",
+      body: JSON.stringify({ customer, items: lines.map(({ product_id, quantity }) => ({ product_id, quantity })) }) });
+    lines = []; drawLines(); show(null); await loadQuotes();
+  } catch (error) { show(error); }
+});
+
+loadProducts().then(loadQuotes);
+</script>
+</body>
+</html>
