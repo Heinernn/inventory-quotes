@@ -3,13 +3,17 @@
 A small web app to keep a product inventory and build customer quotes. I built it to practise the same kind of
 workflow I use at work (inventory, orders and quotations), with sample data only.
 
+![Inventory & Quotes: products, a quote being built and saved quotes](docs/screenshot.jpg)
+
 ## What it does
 
 - Create, list, update and delete products (SKU, name, price, stock).
 - Build a quote from several products. The server checks the stock and calculates subtotal, tax (13%) and total,
   so the numbers do not depend on the browser.
 - List saved quotes and read the detail of any quote.
-- A single page UI (plain HTML and JavaScript) on top of a JSON API.
+- A single page UI (plain HTML, CSS and JavaScript) on top of a JSON API: product search, stock badges, a live
+  totals preview while you build the quote, and messages for every error. Everything coming from the API is
+  escaped before it is drawn.
 
 ## Stack
 

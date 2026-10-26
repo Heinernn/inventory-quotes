@@ -4,79 +4,144 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Inventory &amp; Quotes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    :root { --ink:#1d2433; --muted:#5d6678; --line:#dde1ea; --accent:#2557d6; --bg:#f6f7fa; }
-    * { box-sizing: border-box; }
-    body { margin:0; font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color:var(--ink); background:var(--bg); }
-    header { background:#fff; border-bottom:1px solid var(--line); padding:14px 24px; }
-    header h1 { margin:0; font-size:18px; }
-    main { max-width:980px; margin:24px auto; padding:0 16px; display:grid; gap:20px; }
-    section { background:#fff; border:1px solid var(--line); border-radius:8px; padding:18px; }
-    h2 { margin:0 0 12px; font-size:16px; }
+    :root {
+      --bg:#09090a; --surface:#111113; --surface-2:#17171a; --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.18);
+      --ink:#f3f0ea; --muted:#9a9892; --faint:#66655f; --accent:#c9ff3d; --accent-ink:#0b0d02; --danger:#ff6b5e; --warn:#ffb84d;
+      --sans:"Inter Tight", system-ui, -apple-system, "Segoe UI", sans-serif; --mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font:400 15px/1.55 var(--sans); color:var(--ink); background:var(--bg);
+      background-image:radial-gradient(60% 40% at 85% -10%, rgba(201,255,61,.10), transparent 70%); background-repeat:no-repeat;
+      -webkit-font-smoothing:antialiased; min-height:100vh; }
+    ::selection { background:var(--accent); color:var(--accent-ink); }
+    .wrap { width:min(1120px, 100% - 32px); margin:0 auto; }
+    header.top { border-bottom:1px solid var(--line); backdrop-filter:blur(10px); position:sticky; top:0; z-index:5; background:rgba(9,9,10,.75); }
+    header.top .wrap { display:flex; align-items:center; justify-content:space-between; height:62px; gap:16px; }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:600; letter-spacing:-.01em; font-size:16px; }
+    .logo { display:grid; place-items:center; width:32px; height:32px; border-radius:9px; background:var(--accent); color:var(--accent-ink); font:700 13px var(--sans); }
+    .pill { font:500 12px var(--mono); color:var(--muted); border:1px solid var(--line-2); border-radius:999px; padding:5px 12px; }
+    .pill b { color:var(--accent); font-weight:500; }
+
+    .stats { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin:28px 0 8px; }
+    .stat { padding:18px 20px; border:1px solid var(--line); border-radius:16px; background:linear-gradient(160deg, var(--surface-2), var(--surface)); }
+    .stat small { display:block; color:var(--muted); font:500 11px var(--mono); text-transform:uppercase; letter-spacing:.12em; }
+    .stat strong { display:block; margin-top:6px; font-size:30px; letter-spacing:-.03em; font-weight:600; }
+
+    main { display:grid; grid-template-columns:1.25fr 1fr; gap:18px; padding:14px 0 70px; align-items:start; }
+    @media (max-width:900px) { main { grid-template-columns:1fr; } .stats { grid-template-columns:1fr; } }
+    main > * { min-width:0; }
+    section.card { min-width:0; overflow-x:auto; border:1px solid var(--line); border-radius:20px; background:var(--surface); padding:22px; }
+    .head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+    h2 { margin:0; font-size:19px; letter-spacing:-.02em; font-weight:600; }
+    .hint { color:var(--muted); font-size:13px; }
+
     table { width:100%; border-collapse:collapse; }
-    th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); }
-    th { color:var(--muted); font-weight:600; font-size:13px; }
-    td.num, th.num { text-align:right; }
-    form.row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
-    input, select, button { font:inherit; padding:7px 9px; border:1px solid var(--line); border-radius:6px; }
-    input { min-width:0; }
-    button { background:var(--accent); border-color:var(--accent); color:#fff; cursor:pointer; }
-    button.ghost { background:#fff; color:var(--accent); }
-    button.danger { background:#fff; color:#b3261e; border-color:#e6c4c1; }
-    #message { min-height:20px; color:#b3261e; }
-    .totals { margin-top:10px; text-align:right; color:var(--muted); }
-    .totals strong { color:var(--ink); }
+    th { text-align:left; color:var(--faint); font:500 11px var(--mono); text-transform:uppercase; letter-spacing:.1em; padding:8px 8px; border-bottom:1px solid var(--line-2); }
+    td { padding:11px 8px; border-bottom:1px solid var(--line); vertical-align:middle; }
+    tbody tr { transition:background .2s; } tbody tr:hover { background:rgba(255,255,255,.025); }
+    .num { text-align:right; font-variant-numeric:tabular-nums; } td.num, th.num { text-align:right; }
+    .mono { font-family:var(--mono); font-size:13px; }
+    .empty { text-align:center; color:var(--faint); padding:26px 8px; }
+    .badge { display:inline-block; padding:2px 9px; border-radius:999px; font:500 12px var(--mono); border:1px solid var(--line-2); color:var(--muted); }
+    .badge.low { color:var(--warn); border-color:rgba(255,184,77,.4); } .badge.out { color:var(--danger); border-color:rgba(255,107,94,.45); }
+
+    input, select, button { font:inherit; color:var(--ink); background:var(--surface-2); border:1px solid var(--line-2); border-radius:10px; padding:9px 12px; min-width:0; }
+    input::placeholder { color:var(--faint); }
+    input:focus, select:focus { outline:2px solid var(--accent); outline-offset:1px; border-color:transparent; }
+    button { cursor:pointer; font-weight:600; transition:background .2s, color .2s, border-color .2s, transform .15s; }
+    button:active { transform:scale(.97); }
+    button.primary { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); } button.primary:hover { background:#dcff7a; }
+    button.ghost:hover { background:var(--ink); color:var(--bg); }
+    button.danger { background:transparent; color:var(--faint); border-color:transparent; padding:6px 10px; font-weight:500; } button.danger:hover { color:var(--danger); border-color:rgba(255,107,94,.4); }
+    button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+    form.row { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; } form.row input { flex:1 1 110px; } form.row input[name=name] { flex:2 1 160px; }
+    .search { flex:0 1 220px; }
+
+    .totals { margin-top:14px; padding:14px 16px; border-radius:14px; background:var(--bg); border:1px dashed var(--line-2); display:grid; gap:4px; }
+    .totals div { display:flex; justify-content:space-between; color:var(--muted); }
+    .totals .grand { color:var(--ink); font-weight:700; font-size:18px; padding-top:8px; margin-top:4px; border-top:1px solid var(--line-2); }
+    .totals small { color:var(--faint); font-size:12px; margin-top:4px; }
+
+    #toast { position:fixed; left:50%; bottom:24px; transform:translate(-50%, 20px); opacity:0; padding:12px 18px; border-radius:12px; background:var(--surface-2); border:1px solid var(--line-2); box-shadow:0 20px 50px rgba(0,0,0,.5); transition:.35s cubic-bezier(.22,1,.36,1); z-index:20; max-width:calc(100% - 32px); }
+    #toast.show { opacity:1; transform:translate(-50%, 0); } #toast.error { border-color:rgba(255,107,94,.6); color:var(--danger); } #toast.ok { border-color:rgba(201,255,61,.5); }
+    @media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
   </style>
 </head>
 <body>
-<header><h1>Inventory &amp; Quotes</h1></header>
-<main>
-  <p id="message" role="alert"></p>
+<header class="top"><div class="wrap">
+  <div class="brand"><span class="logo">IQ</span> Inventory &amp; Quotes</div>
+  <span class="pill">tax <b>{{ tax_rate }}%</b> added by the server</span>
+</div></header>
 
-  <section>
-    <h2>Products</h2>
-    <table>
-      <thead><tr><th>SKU</th><th>Name</th><th class="num">Price</th><th class="num">Stock</th><th></th></tr></thead>
-      <tbody id="products"></tbody>
-    </table>
-    <form class="row" id="product-form">
-      <input name="sku" placeholder="SKU" required>
-      <input name="name" placeholder="Name" required>
-      <input name="price" type="number" step="0.01" min="0" placeholder="Price" required>
-      <input name="stock" type="number" min="0" placeholder="Stock" required>
-      <button type="submit">Add product</button>
-    </form>
-  </section>
+<div class="wrap">
+  <div class="stats">
+    <div class="stat"><small>Products</small><strong id="stat-products">0</strong></div>
+    <div class="stat"><small>Units in stock</small><strong id="stat-units">0</strong></div>
+    <div class="stat"><small>Quoted so far</small><strong id="stat-quoted">0.00</strong></div>
+  </div>
 
-  <section>
-    <h2>New quote (tax {{ tax_rate }}% added automatically)</h2>
-    <form class="row" id="quote-form">
-      <input name="customer" placeholder="Customer" required>
-      <select name="product" id="quote-product"></select>
-      <input name="quantity" type="number" min="1" value="1" style="width:90px">
-      <button type="button" class="ghost" id="add-line">Add line</button>
-    </form>
-    <table>
-      <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Unit</th><th></th></tr></thead>
-      <tbody id="lines"></tbody>
-    </table>
-    <form class="row" id="save-quote"><button type="submit">Save quote</button></form>
-  </section>
+  <main>
+    <div style="display:grid; gap:18px;">
+      <section class="card">
+        <div class="head"><h2>Products</h2><input class="search" id="search" type="search" placeholder="Search name or SKU" aria-label="Search products"></div>
+        <table>
+          <thead><tr><th>SKU</th><th>Name</th><th class="num">Price</th><th class="num">Stock</th><th></th></tr></thead>
+          <tbody id="products"></tbody>
+        </table>
+        <form class="row" id="product-form">
+          <input name="sku" placeholder="SKU" required>
+          <input name="name" placeholder="Name" required>
+          <input name="price" type="number" step="0.01" min="0" placeholder="Price" required>
+          <input name="stock" type="number" min="0" placeholder="Stock" required>
+          <button type="submit" class="primary">Add product</button>
+        </form>
+      </section>
 
-  <section>
-    <h2>Saved quotes</h2>
-    <table>
-      <thead><tr><th>#</th><th>Customer</th><th class="num">Subtotal</th><th class="num">Tax</th><th class="num">Total</th></tr></thead>
-      <tbody id="quotes"></tbody>
-    </table>
-  </section>
-</main>
+      <section class="card">
+        <div class="head"><h2>Saved quotes</h2><span class="hint">calculated and stored by the server</span></div>
+        <table>
+          <thead><tr><th>#</th><th>Customer</th><th class="num">Subtotal</th><th class="num">Tax</th><th class="num">Total</th></tr></thead>
+          <tbody id="quotes"></tbody>
+        </table>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="head"><h2>New quote</h2><span class="hint">the server validates stock</span></div>
+      <form class="row" id="quote-form" style="margin-top:0">
+        <input name="customer" placeholder="Customer" required style="flex-basis:100%">
+        <select name="product" id="quote-product" aria-label="Product"></select>
+        <input name="quantity" type="number" min="1" value="1" style="flex:0 0 80px" aria-label="Quantity">
+        <button type="button" class="ghost" id="add-line">Add line</button>
+      </form>
+      <table style="margin-top:12px">
+        <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Unit</th><th></th></tr></thead>
+        <tbody id="lines"></tbody>
+      </table>
+      <div class="totals" aria-live="polite">
+        <div><span>Subtotal</span><span class="mono" id="t-sub">0.00</span></div>
+        <div><span>Tax {{ tax_rate }}%</span><span class="mono" id="t-tax">0.00</span></div>
+        <div class="grand"><span>Total</span><span class="mono" id="t-total">0.00</span></div>
+        <small>Preview only. The saved quote uses the server's calculation.</small>
+      </div>
+      <form class="row" id="save-quote"><button type="submit" class="primary" style="width:100%">Save quote</button></form>
+    </section>
+  </main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script>
+const TAX = {{ tax_rate }} / 100;
 const money = n => Number(n).toFixed(2);
-const message = document.getElementById("message");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const $ = id => document.getElementById(id);
 let products = [];
 let lines = [];
+let toastTimer;
 
 async function api(path, options = {}) {
   const response = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options });
@@ -86,48 +151,73 @@ async function api(path, options = {}) {
   return body;
 }
 
-function show(error) { message.textContent = error ? error.message : ""; }
-
-async function loadProducts() {
-  products = await api("/api/products");
-  document.getElementById("products").innerHTML = products.map(p => `
-    <tr><td>${p.sku}</td><td>${p.name}</td><td class="num">${money(p.price)}</td><td class="num">${p.stock}</td>
-    <td class="num"><button class="danger" data-delete="${p.id}">Delete</button></td></tr>`).join("");
-  document.getElementById("quote-product").innerHTML =
-    products.map(p => `<option value="${p.id}">${p.name} (${money(p.price)})</option>`).join("");
+function toast(text, kind = "ok") {
+  const t = $("toast");
+  t.textContent = text; t.className = "show " + kind;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ""; }, 3200);
 }
+
+function stockBadge(n) {
+  if (n === 0) return `<span class="badge out">out</span>`;
+  return `<span class="badge ${n <= 5 ? "low" : ""}">${n}</span>`;
+}
+
+function drawProducts() {
+  const q = $("search").value.trim().toLowerCase();
+  const shown = products.filter(p => !q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+  $("products").innerHTML = shown.length ? shown.map(p => `
+    <tr><td class="mono">${esc(p.sku)}</td><td>${esc(p.name)}</td><td class="num mono">${money(p.price)}</td>
+    <td class="num">${stockBadge(p.stock)}</td>
+    <td class="num"><button class="danger" data-delete="${p.id}" aria-label="Delete ${esc(p.name)}">Delete</button></td></tr>`).join("")
+    : `<tr><td colspan="5" class="empty">${products.length ? "No product matches your search." : "No products yet. Add one below."}</td></tr>`;
+  $("quote-product").innerHTML = products.map(p => `<option value="${p.id}">${esc(p.name)} (${money(p.price)})</option>`).join("");
+  $("stat-products").textContent = products.length;
+  $("stat-units").textContent = products.reduce((a, p) => a + p.stock, 0);
+}
+
+async function loadProducts() { products = await api("/api/products"); drawProducts(); }
 
 async function loadQuotes() {
   const quotes = await api("/api/quotes");
-  document.getElementById("quotes").innerHTML = quotes.map(q => `
-    <tr><td>${q.id}</td><td>${q.customer}</td><td class="num">${money(q.subtotal)}</td>
-    <td class="num">${money(q.tax)}</td><td class="num"><strong>${money(q.total)}</strong></td></tr>`).join("");
+  $("quotes").innerHTML = quotes.length ? quotes.map(q => `
+    <tr><td class="mono">${q.id}</td><td>${esc(q.customer)}</td><td class="num mono">${money(q.subtotal)}</td>
+    <td class="num mono">${money(q.tax)}</td><td class="num mono"><strong>${money(q.total)}</strong></td></tr>`).join("")
+    : `<tr><td colspan="5" class="empty">No quotes yet.</td></tr>`;
+  $("stat-quoted").textContent = money(quotes.reduce((a, q) => a + q.total, 0));
 }
 
 function drawLines() {
-  document.getElementById("lines").innerHTML = lines.map((l, i) => `
-    <tr><td>${l.name}</td><td class="num">${l.quantity}</td><td class="num">${money(l.price)}</td>
-    <td class="num"><button class="danger" data-remove="${i}">Remove</button></td></tr>`).join("");
+  $("lines").innerHTML = lines.length ? lines.map((l, i) => `
+    <tr><td>${esc(l.name)}</td><td class="num">${l.quantity}</td><td class="num mono">${money(l.price)}</td>
+    <td class="num"><button class="danger" data-remove="${i}" aria-label="Remove ${esc(l.name)}">Remove</button></td></tr>`).join("")
+    : `<tr><td colspan="4" class="empty">Add a product to start the quote.</td></tr>`;
+  const sub = lines.reduce((a, l) => a + l.price * l.quantity, 0);
+  $("t-sub").textContent = money(sub);
+  $("t-tax").textContent = money(sub * TAX);
+  $("t-total").textContent = money(sub * (1 + TAX));
 }
 
-document.getElementById("product-form").addEventListener("submit", async event => {
+$("search").addEventListener("input", drawProducts);
+
+$("product-form").addEventListener("submit", async event => {
   event.preventDefault();
   const form = new FormData(event.target);
   try {
     await api("/api/products", { method: "POST", body: JSON.stringify(Object.fromEntries(form)) });
-    event.target.reset(); show(null); await loadProducts();
-  } catch (error) { show(error); }
+    event.target.reset(); await loadProducts(); toast("Product added");
+  } catch (error) { toast(error.message, "error"); }
 });
 
-document.getElementById("products").addEventListener("click", async event => {
+$("products").addEventListener("click", async event => {
   const id = event.target.dataset.delete;
   if (!id) return;
-  try { await api(`/api/products/${id}`, { method: "DELETE" }); show(null); await loadProducts(); }
-  catch (error) { show(error); }
+  try { await api(`/api/products/${id}`, { method: "DELETE" }); await loadProducts(); toast("Product deleted"); }
+  catch (error) { toast(error.message, "error"); }
 });
 
-document.getElementById("add-line").addEventListener("click", () => {
-  const form = document.getElementById("quote-form");
+$("add-line").addEventListener("click", () => {
+  const form = $("quote-form");
   const product = products.find(p => p.id === Number(form.product.value));
   const quantity = Number(form.quantity.value);
   if (!product || quantity < 1) return;
@@ -135,24 +225,26 @@ document.getElementById("add-line").addEventListener("click", () => {
   drawLines();
 });
 
-document.getElementById("lines").addEventListener("click", event => {
+$("lines").addEventListener("click", event => {
   const index = event.target.dataset.remove;
   if (index === undefined) return;
   lines.splice(Number(index), 1);
   drawLines();
 });
 
-document.getElementById("save-quote").addEventListener("submit", async event => {
+$("save-quote").addEventListener("submit", async event => {
   event.preventDefault();
-  const customer = document.getElementById("quote-form").customer.value;
+  const customer = $("quote-form").customer.value;
   try {
     await api("/api/quotes", { method: "POST",
       body: JSON.stringify({ customer, items: lines.map(({ product_id, quantity }) => ({ product_id, quantity })) }) });
-    lines = []; drawLines(); show(null); await loadQuotes();
-  } catch (error) { show(error); }
+    lines = []; drawLines(); $("quote-form").customer.value = "";
+    await Promise.all([loadQuotes(), loadProducts()]); toast("Quote saved");
+  } catch (error) { toast(error.message, "error"); }
 });
 
-loadProducts().then(loadQuotes);
+drawLines();
+loadProducts().then(loadQuotes).catch(error => toast(error.message, "error"));
 </script>
 </body>
 </html>
